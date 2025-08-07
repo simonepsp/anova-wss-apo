@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anova WebSocket Client</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+    input, button, textarea { font-size: 16px; margin-top: 10px; width: 100%; padding: 8px; }
+    textarea { height: 100px; resize: vertical; }
+    #log { white-space: pre-wrap; background: #222; color: #0f0; padding: 10px; height: 500px; overflow-y: auto; }
+    #updateBtn { margin-top: 10px; background: #007bff; color: white; border: none; padding: 10px; font-weight: bold; cursor: pointer; display: none; }
+  </style>
+</head>
+<body>
+  <h2>Anova Self-Service Websocket Client</h2>
+  <h3>github.com/simonepsp</h3>
+  <h5>Login through refresh token or access token</h5>
+  <label for="refreshToken">Refresh Token (Anova dashboard)</label>
+  <input type="text" id="refreshToken" placeholder="Enter Anova Refresh Token" />
+
+  <label for="idToken">Personal Access Token (app)</label>
+  <input type="text" id="idToken" placeholder="Anova access token (generate it from the app)" />
+
+  <button id="loginBtn">Login & Connect to your APO</button>
+
+  <h3>Send Command (JSON):</h3>
+  <textarea id="commandInput" placeholder='{"deviceId":"...", "commandType":"..."}'></textarea>
+  <button id="sendBtn">Send Command</button>
+
+  <button id="updateBtn"></button>
+
+  <h3>Log:</h3>
+  <div id="log"></div>
+
+  <script>
+    const FIREBASE_API_KEY = "AIzaSyB0VNqmJVAeR1fn_NbqqhwSytyMOZ_JO9c";
+
+    let ws = null;
+    let lastFirmware = null;
+
+    function log(message) {
+      const logDiv = document.getElementById("log");
+      const time = new Date().toLocaleTimeString();
+      logDiv.textContent += `[${time}] ${message}\n`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    async function getIdTokenFromRefresh(refreshToken) {
+      const url = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
+      const body = new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken
+      });
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString()
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Token refresh failed: ${resp.status} ${resp.statusText}`);
+      }
+
+      const data = await resp.json();
+      return data.id_token;
+    }
+
+    function generateUUID() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11)
+    .replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+    }
+
+    function connectWebSocket(idToken) {
+      const accessories = "APO";
+      const platform = "ios";
+      const url = `wss://devices.anovaculinary.io?token=${idToken}&supportedAccessories=${accessories}&platform=${platform}`;
+
+      ws = new WebSocket(url, "ANOVA_V2");
+
+      ws.onopen = () => {
+        log("🔗 WebSocket connected.");
+      };
+
+      ws.onmessage = async event => {
+        try {
+          const json = JSON.parse(event.data);
+          log("📨 Message received:\n" + JSON.stringify(json, null, 2));
+
+          if (json.command === "EVENT_APO_WIFI_FIRMWARE_UPDATE" && json.payload?.ota?.available) {
+            const version = json.payload.ota.version || "unknown";
+            const description = json.payload.ota.description || "No description";
+            lastFirmware = {
+              version,
+              description,
+              url: json.payload.ota.url,
+              cookerId: json.payload.cookerId
+            };
+
+            log(`⚙️ New firmware detected: version ${version} - ${description}`);
+
+            const updateBtn = document.getElementById("updateBtn");
+            updateBtn.textContent = `UPDATE to ${version}`;
+            updateBtn.style.display = "block";
+          }
+
+        } catch {
+          log("📨 Message received:\n" + event.data);
+        }
+      };
+
+      ws.onerror = event => {
+        log("❌ WebSocket error.");
+        console.error(event);
+      };
+
+      ws.onclose = (event) => {
+        log(`🔌 Connection closed (${event.code}): ${event.reason}`);
+        document.getElementById("updateBtn").style.display = "none";
+      };
+    }
+
+    async function sendCommand() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log("⚠️ WebSocket is not connected.");
+        return;
+      }
+
+      const input = document.getElementById("commandInput").value;
+      try {
+        const json = JSON.parse(input);
+        if (!json.requestId) {
+          json.requestId = crypto.randomUUID();
+        }
+        ws.send(JSON.stringify(json));
+        log("➡️ Sent command:\n" + JSON.stringify(json, null, 2));
+      } catch (e) {
+        log("❌ Invalid JSON command.");
+      }
+    }
+
+    async function doFirmwareUpdate() {
+      if (!lastFirmware) {
+        log("⚠️ No firmware info available.");
+        return;
+      }
+
+      log(`⬇️ Fetching firmware manifest from ${lastFirmware.url}...`);
+      try {
+        const response = await fetch("https://corsproxy.io/?" + encodeURIComponent(lastFirmware.url));
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
+        const manifest = await response.json();
+        const downloadLink = manifest["download-link-full-ota"];
+
+        if (!downloadLink) {
+          log("❌ Firmware manifest does not contain 'download-link-full-ota'");
+          return;
+        }
+
+        const command = {
+          command: "CMD_APO_OTA",
+          payload: {
+            id: lastFirmware.cookerId,
+            type: "CMD_APO_OTA",
+            payload: {
+              downloadLink: downloadLink
+            }
+          },
+          requestId: generateUUID()
+        };
+
+        log("📤 Sending OTA command: " + JSON.stringify(command));
+        ws.send(JSON.stringify(command));
+        log(`➡️ Sent OTA command with downloadLink: ${downloadLink}`);
+
+      } catch (err) {
+        log("❌ Error fetching/parsing firmware manifest: " + err.message);
+      }
+    }
+
+    document.getElementById("loginBtn").onclick = async () => {
+      const refreshToken = document.getElementById("refreshToken").value.trim();
+      const idTokenInput = document.getElementById("idToken").value.trim();
+
+      try {
+        let idToken = idTokenInput;
+        if (!idToken && refreshToken) {
+          log("⏳ Using refresh token to get ID token...");
+          idToken = await getIdTokenFromRefresh(refreshToken);
+          log("✅ Got ID token from refresh.");
+        }
+
+        if (!idToken) {
+          alert("Please enter either a Refresh Token or an ID Token.");
+          return;
+        }
+
+        log("🔐 Connecting with ID token...");
+        connectWebSocket(idToken);
+
+      } catch (err) {
+        log("❌ Login failed: " + err.message);
+      }
+    };
+
+    document.getElementById("sendBtn").onclick = sendCommand;
+    document.getElementById("updateBtn").onclick = doFirmwareUpdate;
+  </script>
+</body>
+</html>
