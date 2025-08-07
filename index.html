@@ -14,13 +14,15 @@
 <body>
   <h2>Anova Self-Service Websocket Client</h2>
   <h3>github.com/simonepsp</h3>
-  <h5>Login through refresh token or access token</h5>
-  <label for="refreshToken">Refresh Token (Anova dashboard)</label>
+  <br>
+
+  <label for="refreshToken">Refresh Token (Anova dashboard) <a href="https://github.com/bogd/anova-oven-api/blob/main/docs/README.md#getting-the-refresh-token" target="_blank">[How to]</a></label>
   <input type="text" id="refreshToken" placeholder="Enter Anova Refresh Token" />
-
-  <label for="idToken">Personal Access Token (app)</label>
-  <input type="text" id="idToken" placeholder="Anova access token (generate it from the app)" />
-
+  <br><br>
+  <details>
+    <summary>[Alternative] Login via Access Token</summary>
+    <input type="text" id="idToken" placeholder="Anova access token (do not use the personal token generated in the app)" />
+  </details>
   <button id="loginBtn">Login & Connect to your APO</button>
 
   <h3>Send Command (JSON):</h3>
@@ -209,5 +211,6 @@
     document.getElementById("sendBtn").onclick = sendCommand;
     document.getElementById("updateBtn").onclick = doFirmwareUpdate;
   </script>
+  <p><strong>Disclaimer:</strong> This tool is an independent project and is not affiliated with, endorsed by, or supported by Anova Culinary or its parent companies. All trademarks and brand names are the property of their respective owners.</p>
 </body>
 </html>
