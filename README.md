@@ -2,9 +2,16 @@
 
 This (unofficial) web tool allows you to connect to your APO 2.0 oven. It can detect firmware update events and even push OTA updates to it.
 
+This is a 2-hours project so expect bugs, random code and *dragons* spitting fire on your house [^1].
+
+
+## Just show me the tool!
+✅ The tool can be accessed on github pages: https://simonepsp.github.io/anova-wss-apo/
+
 ## How to obtain an access token
 A full guide on how to obtain an Anova access token has been posted here by @bogd https://github.com/bogd/anova-oven-api/blob/main/docs/README.md
 I've copy pasted it below
+
 
 ### Getting the refresh token
 
@@ -20,3 +27,5 @@ The actual application runs on Firebase, and authenticates via Google's Identity
 
 ## Disclaimer
 This tool is an independent project and is not affiliated with, endorsed by, or supported by Anova Culinary or its parent companies. All trademarks and brand names are the property of their respective owners.
+
+[^1]: Dragons are real dangerous. Beware
