@@ -1,6 +1,6 @@
 # Anova APO Web Tool | An unofficial client for your APO 2.0
 
-This (unofficial) web tool that allows you to connect to your APO 2.0 oven. It can detect firmware update events and even push OTA updates to it.
+This unofficial web tool allows you to connect to your APO 2.0 oven. It can detect firmware update events and even push OTA updates to the device.
 
 This is a 2-hours project so expect bugs, random code and *dragons* spitting fire on your house [^1].
 
