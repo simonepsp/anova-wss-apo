@@ -20,7 +20,6 @@ The actual application runs on Firebase, and authenticates via Google's Identity
 1. Using Chrome, connect to [https://oven.anovaculinary.com](https://oven.anovaculinary.com) . Authenticate using whatever mechanism you normally use. 
 2. Press F12, and go to `Application > Storage > IndexedDB > firebaseLocalStorageDB > firebaseLocalStorage > value > stsTokenManager > refreshToken`
 3. If you are able to copy/paste that token, great! In my case, Chrome did not allow that, so I had to install a third-party extension (IndexedDBEdit). This adds a new tab under F12, so you can easily go to `F12 > IndexedDBEdit > firebaseLocalStorageDB > firebaseLocalStorage` and get the `refreshToken` value from the JSON.
-4. While you are here, also get the `apiKey` (it should be the same one for everyone)
 
 ## Screenshots
 <img width="2974" height="2202" alt="Anova Webtool" src="https://github.com/user-attachments/assets/be75fc8a-f532-4516-aeba-9c7e63c3367d" />
