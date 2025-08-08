@@ -9,24 +9,43 @@
     textarea { height: 100px; resize: vertical; }
     #log { white-space: pre-wrap; background: #222; color: #0f0; padding: 10px; height: 500px; overflow-y: auto; }
     #updateBtn { margin-top: 10px; background: #007bff; color: white; border: none; padding: 10px; font-weight: bold; cursor: pointer; display: none; }
+    .container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+    .info, .donation { flex: 1; }
+    .donation { text-align: donation; }
+    .donation img { max-width: 150px; margin: 0 auto 10px; display: block; height: auto; }
   </style>
 </head>
 <body>
-  <h2>Anova Self-Service Websocket Client</h2>
-  <h3>github.com/simonepsp</h3>
-  <br>
-  <h5>Please consider a small BTC donation if this tool saved your oven <3  <br>
-  <img src="img/wallet.png" alt="bc1qd46574fhplmjzz78nxhwrjddjpm8sdtrrwk7u6"> 
-  <br>BTC Address: bc1qd46574fhplmjzz78nxhwrjddjpm8sdtrrwk7u6 </h5>
-
-  <label for="refreshToken">Refresh Token (Anova dashboard) <a href="https://github.com/bogd/anova-oven-api/blob/main/docs/README.md#getting-the-refresh-token" target="_blank">[How to]</a></label>
-  <input type="text" id="refreshToken" placeholder="Enter Anova Refresh Token" />
+  <div class="container">
+    <div class="info">
+      <h2>Anova Self-Service Websocket Client</h2>
+      <h3>github.com/simonepsp</h3>
+    </div>
+    <div class="donation">
+      <h5>
+        Please consider a small BTC donation if this tool saved your oven <3<br>
+        BTC Address: bc1qd46574fhplmjzz78nxhwrjddjpm8sdtrrwk7u6
+        <img src="img/wallet.png" alt="bc1qd46574fhplmjzz78nxhwrjddjpm8sdtrrwk7u6" />
+      </h5>
+    </div>
+  </div>
+  <h3>[Recommended] Login with Anova email / password</h3>
+  <small>Please note that due to <b>CORS security policies</b>, I had to rely on a proxy. For security, I recommend changing your Anova credentials after using this tool.</small><br><br>
+  <label>Email: <input type="email" id="email" placeholder="Your Anova email" /></label><br><br>
+  <label>Password: <input type="password" id="password" placeholder="Password"/></label>
+  <button id="anovaLoginBtn">Log in and retrieve access token</button>
   <br><br>
+
   <details>
-    <summary>[Alternative] Login via Access Token</summary>
-    <input type="text" id="idToken" placeholder="Anova access token (do not use the personal token generated in the app)" />
+    <summary>Refresh Token (Anova dashboard) <a href="https://github.com/bogd/anova-oven-api/blob/main/docs/README.md#getting-the-refresh-token" target="_blank">[How to]</a></summary>
+    <label for="refreshToken"></label>
+    <input type="text" id="refreshToken" placeholder="Enter Anova Refresh Token (if you already know it)" />
   </details>
-  <button id="loginBtn">Login & Connect to your APO</button>
+  
+  <br><br>
+  <h5>Access Token</h5>
+  <input type="text" id="idToken" placeholder="Anova access token (do not use the personal token generated in the app)" />
+  <button id="connectBtn">Connect to your APO</button>
 
   <h3>Send Command (JSON):</h3>
   <small>See some of the available commands <a href="https://github.com/bogd/anova-oven-api/tree/main/docs/oven" target="_blank">here</a>
@@ -49,6 +68,33 @@
       const time = new Date().toLocaleTimeString();
       logDiv.textContent += `[${time}] ${message}\n`;
       logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+        async function signInWithEmailPassword(email, password) {
+      // Use the special API key for login
+      const LOGIN_API_KEY = "AIzaSyCGJwHXUhkNBdPkH3OAkjc9-3xMMjvanfU";
+      const targetUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${LOGIN_API_KEY}`;
+      const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
+
+      const body = {
+        email,
+        password,
+        returnSecureToken: true,
+      };
+
+      const response = await fetch(proxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error.message || "Failed to login");
+      }
+
+      const data = await response.json();
+      document.getElementById("idToken").value = data.idToken;
     }
 
     async function getIdTokenFromRefresh(refreshToken) {
@@ -187,12 +233,27 @@
       }
     }
 
-    document.getElementById("loginBtn").onclick = async () => {
+    document.getElementById("anovaLoginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (email && password) {
+            log("🔐 Logging in with email and password...");
+            idToken = await signInWithEmailPassword(email, password);
+            log("✅ Got Access / ID token from Anova");
+      } else {
+        alert("Please enter email and password");
+        return;
+      }
+    }
+
+    document.getElementById("connectBtn").onclick = async () => {
       const refreshToken = document.getElementById("refreshToken").value.trim();
       const idTokenInput = document.getElementById("idToken").value.trim();
 
       try {
         let idToken = idTokenInput;
+
         if (!idToken && refreshToken) {
           log("⏳ Using refresh token to get ID token...");
           idToken = await getIdTokenFromRefresh(refreshToken);
@@ -200,7 +261,7 @@
         }
 
         if (!idToken) {
-          alert("Please enter either a Refresh Token or an ID Token.");
+          alert("Please enter  Refresh Token or ID Token.");
           return;
         }
 
