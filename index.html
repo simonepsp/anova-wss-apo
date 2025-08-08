@@ -26,7 +26,8 @@
   <button id="loginBtn">Login & Connect to your APO</button>
 
   <h3>Send Command (JSON):</h3>
-  <textarea id="commandInput" placeholder='{"deviceId":"...", "commandType":"..."}'></textarea>
+  <small>See some of the available commands <a href="https://github.com/bogd/anova-oven-api/tree/main/docs/oven" target="_blank">here</a>
+  <textarea id="commandInput" placeholder='{"command":"...","payload":{"type":"...","id":"<your_oven_id>"},"requestId":"<uuid>"}'></textarea>
   <button id="sendBtn">Send Command</button>
 
   <button id="updateBtn"></button>
